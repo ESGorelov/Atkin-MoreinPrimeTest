@@ -52,27 +52,19 @@ namespace Atkin_MoreinPrimeTest
                 Console.WriteLine();
             }
         }
-        public static void TestPolynom()
-        {
-            //Polynom p = new Polynom(new List<BigInteger> { 2, 3, 4, 9, 0, 0, 1, },11);
-            //Polynom p2 = new Polynom(new List<BigInteger> { 7,0,0,1 }, 11);
-            
-            //Console.WriteLine(p.ToString());
-            //Console.WriteLine(p2.ToString());        
-            //Console.WriteLine((Polynom.Remainder(p, p2)).ToString());
-            //Console.WriteLine(p.ToString());
-            //Console.WriteLine(p2.ToString());
-        }
+        
         public static void TestPolynomParse()
         {
-            var a = Polynom.Parse("+1x^4+2x^3-3x+4",10);
-            var a1 = Polynom.Parse("+x^2-x-2",10);
+            //var a = Polynom.Parse("+1x^4+2x^3-3x+4",19);
+            //var a1 = Polynom.Parse("+x^2-x-2",19);
+            var a = Polynom.Parse("+7x^11+x^9+7x^2+1", 19);
+            var a1 = Polynom.Parse("-7x^7-x^5+7x^2+1", 19);
             Console.WriteLine(a);
             Console.WriteLine(a1);
-            Console.WriteLine(a-a1);           
-            Console.WriteLine(a + a1);
-            Console.WriteLine(a * a1);
-            Console.WriteLine(Polynom.Remainder(a,a1));
+            //Console.WriteLine(a-a1);           
+            //Console.WriteLine(a + a1);
+            //Console.WriteLine(a * a1);
+            Console.WriteLine(Polynom.GreatCommonDivisor(a,a1));
             Console.WriteLine();
             Console.WriteLine(a);
             Console.WriteLine(a1);

@@ -15,12 +15,12 @@ namespace Atkin_MoreinPrimeTest
             get;
             private set;
         }
-        public BigInteger Fp // Поле Галуа (Если Fp = 0 то поле R)
+        public BigInteger Fp // Поле Галуа ()
         {
             get;
             private set;
         }
-        List<Monom> coefficients; // номер элемента = степень x
+        List<Monom> coefficients; 
         #endregion
         #region Конструкторы
         Polynom(Polynom a)
@@ -38,7 +38,7 @@ namespace Atkin_MoreinPrimeTest
 
         #endregion
 
-        #region Операции с Полиномами
+        #region Математические Операции с Полиномами
         /// <summary>
         /// Разность полиномов
         /// </summary>
@@ -49,12 +49,12 @@ namespace Atkin_MoreinPrimeTest
         {
             a.NormPolynom();
             b.NormPolynom();
-            
+
             List<Monom> c = new List<Monom>();
             int curnta = 0; // Текущий элемент в полиноме а
             int curntb = 0; // Текущий элемент в полиноме b
 
-            while(curnta < a.coefficients.Count && curntb < b.coefficients.Count)
+            while (curnta < a.coefficients.Count && curntb < b.coefficients.Count)
             {
                 if (a.coefficients[curnta].Degree < b.coefficients[curntb].Degree)
                 {
@@ -89,7 +89,7 @@ namespace Atkin_MoreinPrimeTest
                 }
             }
             return new Polynom(c, a.Fp);
-        } 
+        }
         /// <summary>
         /// Сумма полиномов
         /// </summary>
@@ -149,7 +149,7 @@ namespace Atkin_MoreinPrimeTest
         /// <param name="number">Множитель</param>
         public void MultiplyInt(BigInteger number)
         {
-            for (int i = 0; i <coefficients.Count; i++)
+            for (int i = 0; i < coefficients.Count; i++)
             {
                 coefficients[i] = coefficients[i].MultiplyInt(number);
             }
@@ -164,15 +164,21 @@ namespace Atkin_MoreinPrimeTest
         public static Polynom operator *(Polynom A, Polynom B)
         {
             List<Monom> c = new List<Monom>();
-            for(int i = 0; i < A.coefficients.Count; i++)
+            for (int i = 0; i < A.coefficients.Count; i++)
             {
-                for(int j = 0; j < B.coefficients.Count; j++)
+                for (int j = 0; j < B.coefficients.Count; j++)
                 {
                     c.Add(A.coefficients[i] * B.coefficients[j]);
                 }
             }
             return new Polynom(c, A.Fp);
         }
+        /// <summary>
+        /// Остаток от деления.
+        /// </summary>
+        /// <param name="a">Делимое</param>
+        /// <param name="b">Делитель</param>
+        /// <returns>Остаток от деления</returns>
         public static Polynom Remainder(Polynom a, Polynom b)
         {
             if (a.Degree < b.Degree) return a;
@@ -191,16 +197,67 @@ namespace Atkin_MoreinPrimeTest
             }
             return a;
         }
-        #endregion
+        /// <summary>
+        /// Остаток от деления. С возвратом целой части
+        /// </summary>
+        /// <param name="a">Делимое</param>
+        /// <param name="b">Делитель</param>
+        /// <param name="_div">Целая цасть</param>
+        /// <returns>Остаток</returns>
+        public static Polynom Remainder(Polynom a, Polynom b, out Polynom _div)
+        {
+            if (a.Degree < b.Degree)
+            {
+                _div = null;
+                return a;
+            }
+            List<Monom> div = new List<Monom>(); // целая часть
+            while (a.Degree >= b.Degree)
+            {
+                BigInteger current_deg = a.Degree - b.Degree;
+                Monom c = new Monom(current_deg, 1); // целая часть от деления
 
+                BigInteger currentInt = a.coefficients[0].Coefficient * Extension.Inverse(b.coefficients[0].Coefficient, b.Fp);
+                c.MultiplyInt(currentInt);
+                div.Add(c);
+                Polynom temp = new Polynom(new List<Monom> { c }, a.Fp);
+                a -= temp * b;
+                a.NormPolynom();
+            }
+            _div = new Polynom(div, a.Fp);
+            return a;
+        }
+        /// <summary>
+        /// Наибольший общий делитель
+        /// </summary>
+        /// <param name="a"></param>
+        /// <param name="b"></param>
+        /// <returns></returns>
+        public static Polynom GreatCommonDivisor(Polynom a, Polynom b)
+        {
+            Polynom u = null;
+            Polynom v = null;
+            if (a.Degree >= b.Degree)
+            {
+                u = a;
+                v = b;
+            }
+            while(v.Degree!=-1) // пока v>0
+            {
+                Polynom utemp = u;
+                u = v;               
+                v = Polynom.Remainder(utemp, v);
+            }
+            return u;
+        }
+        #endregion
+        #region Побочные методы
         /// <summary>
         /// Нормировка полинома в заданном поле.
         /// </summary>
         private void NormPolynom()
-        {
-            if (Fp != 0) // Если Fp = 0 то поле R
-            {
-                for (int i = 0; i <coefficients.Count; i++)
+        {         
+                for (int i = 0; i < coefficients.Count; i++)
                 {
                     if (coefficients[i].Coefficient < 0)
                     {
@@ -212,17 +269,17 @@ namespace Atkin_MoreinPrimeTest
                         coefficients[i] = coefficients[i].Remainder(Fp);
                     }
                 }
-            }
         }
-
-
-
+        /// <summary>
+        /// Строковое представление
+        /// </summary>
+        /// <returns></returns>
         public override string ToString()
         {
             StringBuilder sb = new StringBuilder();
             CheckPoly();
 
-            if (Degree == 0)// Если нулевая степень полинома
+            if (Degree == 0 || Degree == -1)// Если нулевая степень полинома или нулевой
             {
                 sb.Append(coefficients[0].Coefficient);
             }
@@ -437,13 +494,20 @@ namespace Atkin_MoreinPrimeTest
         /// Удаление нулевых коэффициентов, Сортировка,сложение одинаковых степеней, установка степени полинома
         /// </summary>
         void CheckPoly()
-        {
-            DeleteZeroCoef();
+        {          
             SummEqualsDegry();
             NormPolynom();
-            Degree = coefficients[0].Degree;
-        }  
+            DeleteZeroCoef();
+            if (coefficients.Count == 0)
+            {
+                Degree = -1;
+                coefficients.Add(new Monom(0, 0));
+            }
+            else
+                Degree = coefficients[0].Degree;
+        }
 
+#endregion
     }
     struct Monom
     {
