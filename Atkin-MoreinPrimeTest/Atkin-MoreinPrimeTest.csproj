@@ -45,7 +45,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Extension.cs" />
+    <Compile Include="ComplexPolynom.cs" />
     <Compile Include="Polynom.cs" />
+    <Compile Include="PrimeTesting.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Tests.cs" />

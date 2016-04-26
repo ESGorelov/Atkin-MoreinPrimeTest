@@ -9,7 +9,13 @@ namespace Atkin_MoreinPrimeTest
 {
     class Extension
     {
-        public static int Lezhandr(BigInteger a, BigInteger m) // символ Якоби. Если m - простое то Якоби = Лежандр
+        /// <summary>
+        /// Символ Якоби(Для простых m - символ Лежандра)
+        /// </summary>
+        /// <param name="a">Вычет</param>
+        /// <param name="m">Модуль</param>
+        /// <returns></returns>
+        public static int Lezhandr(BigInteger a, BigInteger m)
         {
             a = BigInteger.Remainder(a, m);
             int t = 1;
@@ -33,17 +39,25 @@ namespace Atkin_MoreinPrimeTest
 
             return 0;
         }
-        public static BigInteger SquareRootModPrime(BigInteger a,BigInteger p) // решение сравнения x^2 mod p = a. если -1 то решения нет
+        /// <summary>
+        /// Квадратный корень по простому модулю. x^2 mod p = a
+        /// </summary>
+        /// <param name="a">Целое число</param>
+        /// <param name="p">Модуль</param>
+        /// <returns>Если -1 то решения нет</returns>
+        public static BigInteger SquareRootModPrime(BigInteger a,BigInteger p)
         {
+            a = BigInteger.Remainder(a, p);
+            while (a < 0) a += p; // не эффективно
+
             if (Lezhandr(a, p) != 1) return -1;
 
-            a = BigInteger.Remainder(a, p);
-
-            if(BigInteger.Remainder(p, 8)==3 || BigInteger.Remainder(p, 8)==7)
+            
+            //----------------Простейшие-случаи p mod 8 = 3,5,7--------------------------------------------
+            if (BigInteger.Remainder(p, 8)==3 || BigInteger.Remainder(p, 8)==7)
             {
                 BigInteger x = BigInteger.ModPow(a, (p + 1) / 4, p);
-                return x;
-              //  return x+x >p ? BigInteger.Abs(x-p):x;
+                return x;      
             }
 
             if (BigInteger.Remainder(p, 8) == 5)
@@ -51,10 +65,9 @@ namespace Atkin_MoreinPrimeTest
                 BigInteger x = BigInteger.ModPow(a, (p + 3) / 8, p);
                 BigInteger y = BigInteger.ModPow(x, 2, p);
                 if (y != a) x = BigInteger.Remainder(x * BigInteger.ModPow(2, (p - 1) / 4, p), p);
-                return x;
-               // return x + x > p ? BigInteger.Abs(x - p) : x;
+                return x;             
             }
-
+            //-------------------------Общий случай----------------------------------------------------------------------
             BigInteger b = 1;
             while (Lezhandr(b, p) != -1) b++;
 
@@ -79,6 +92,12 @@ namespace Atkin_MoreinPrimeTest
             //if (r + r > p) r = BigInteger.Abs(r - p);
             //return r + r > p ? BigInteger.Abs(r - p) : r;
         }
+        /// <summary>
+        /// Целочисленный квадратный корень Если -1 то ошибка
+        /// </summary>
+        /// <param name="n"></param>
+        /// <param name="index"></param>
+        /// <returns></returns>
         public static BigInteger Sqrt(BigInteger n, int index = 2)
         {
             if (n <= 0) return 0;
@@ -107,15 +126,22 @@ namespace Atkin_MoreinPrimeTest
                     return x; // по тестам корень на 1 меньше получается 
             }
             return -1;          
-        } // Целочисленный квадратный корень Если -1 то ошибка
-        public static List<List<BigInteger>> KornakiSmit(BigInteger p, int D)
+        }
+        /// <summary>
+        ///  представление 4p = x^2 + |D|y^2
+        /// </summary>
+        /// <param name="p"></param>
+        /// <param name="D"></param>
+        /// <returns></returns>
+        public static List<BigInteger> KornakiSmit(BigInteger p, int D)
         {
-            var xy = new List<List<BigInteger>>();
+            var xy = new List<BigInteger>();
             if (p.CompareTo(2) == 0)
             {
                 if(D+8 == BigInteger.Pow(Sqrt(D + 8),2))
                 {
-                    xy.Add(new List<BigInteger> { Sqrt(D + 8), 1 });
+                    xy.Add(Sqrt(D + 8));
+                    xy.Add(1);
                     return xy;
                 }
                 return xy;
@@ -141,23 +167,28 @@ namespace Atkin_MoreinPrimeTest
             if (t/ Math.Abs(D) != BigInteger.Pow(Sqrt(t/Math.Abs(D)), 2))
                 return xy;
 
-            xy.Add(new List<BigInteger>{ b, Sqrt(BigInteger.Divide(t, Math.Abs(D)))});
-            xy.Add(new List<BigInteger> { -b, -Sqrt(BigInteger.Divide(t, Math.Abs(D))) });
+            xy.Add(b);
+            xy.Add(Sqrt(BigInteger.Divide(t, Math.Abs(D))));
             return xy;
-        }// представление 4p = x^2 + |D|y^2
-        public static List<BigInteger[]> GilbertPolynom(int D) // Гильбертов многочлен, число классов и множество привиденных форм (a,b,c) дискриминанта D
+        }
+        /// <summary>
+        /// Гильбертов многочлен, число классов и множество привиденных форм (a,b,c) дискриминанта D
+        /// </summary>
+        /// <param name="D"></param>
+        /// <returns></returns>
+        public static List<BigInteger[]> GilbertPolynom(int D)
         {
             //-----Инициализация------------------------------------------
 
-           // Polynom T = new Polynom(new List<BigInteger> { 1 }, 0);
+            ComplexPolynom T = new ComplexPolynom(new List<ComplexMonom> {new ComplexMonom(0,1) });
             int b = D & 0x01; // D mod 2
-            int r = (int)Math.Sqrt(Math.Abs(D) / 3);
+            int k = (int)Math.Sqrt(Math.Abs(D) / 3);
             int h = 0; // счетчик классов
             List<BigInteger[]> red = new List<BigInteger[]>(); // Множество примитивных приведенных форм (a,b,c)
 
             //----------Основной Цикл по b---------------------------------------
 
-            while(b <= r)
+            while(b <= k)
             {
                 int t = (b * b - D);
                 if ((t & 0x03) != 0)
@@ -172,16 +203,25 @@ namespace Atkin_MoreinPrimeTest
                     int c = m / a;
                     if (b > a) continue;
 
-                    //---------Установки для многочлена-------------------------                   
+                    //---------Установки для многочлена-------------------------      
+                    Complex r = new Complex(-b, Math.Sqrt(Math.Abs(D)));
+                    r /= 2 * a;
+                    Complex delt1 = Delta(Complex.Exp(4 * Math.PI * r * Complex.ImaginaryOne), 10);
+                    Complex delt2 = Delta(Complex.Exp(2 * Math.PI * r * Complex.ImaginaryOne), 10);
+                    var f = delt1 / delt2;
+                    var j = Complex.Pow(256 * f + 1, 3);
+                    j /= f;
 
                     //----------------------------------
-                    if(b==a || c==a || b==0)
+                    if (b==a || c==a || b==0)
                     {
+                        T = ComplexPolynom.MultiplyPol(T, j, "line");
                         h++;
                         red.Add(new BigInteger[] { a, b, c });
                     }
                     else
                     {
+                        T = ComplexPolynom.MultiplyPol(T, j, "quadr");
                         h += 2;
                         red.Add(new BigInteger[] { a, b, c });
                         red.Add(new BigInteger[] { a, -b, c });
@@ -190,6 +230,7 @@ namespace Atkin_MoreinPrimeTest
                 b++;
             }
             return red;
+
         } 
 
         private static Complex Delta(Complex q,int epsilon) // delta(q) epsilon - точность
@@ -230,5 +271,17 @@ namespace Atkin_MoreinPrimeTest
             }
             return x;
         } // ch^-1 mod n
+
+        public static BigInteger Random (BigInteger A, BigInteger B)
+        {
+            Random rnd = new Random(DateTime.Now.Millisecond);
+            int countByte = B.ToByteArray().Count();
+            byte[] r = new byte[countByte + rnd.Next(-1, 2)];
+            rnd.NextBytes(r);
+            BigInteger randBigint = new BigInteger(r);
+            return BigInteger.Abs(BigInteger.Remainder(randBigint, B - A)) + A;
+        }
+
+        
     }
 }

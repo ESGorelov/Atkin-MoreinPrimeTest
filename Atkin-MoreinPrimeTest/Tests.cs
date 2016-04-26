@@ -48,28 +48,32 @@ namespace Atkin_MoreinPrimeTest
                 if (list.Count == 0)
                     Console.WriteLine("Нет решения" + "  " + d);
                 else
-                    Console.WriteLine(list[0][0] + "  " + list[0][1] + "  " + d);
+                    Console.WriteLine(list[0] + "  " + list[1] + "  " + d);
                 Console.WriteLine();
             }
-        }
-        
+        }      
         public static void TestPolynomParse()
         {
-            //var a = Polynom.Parse("+1x^4+2x^3-3x+4",19);
-            //var a1 = Polynom.Parse("+x^2-x-2",19);
-            var a = Polynom.Parse("+7x^11+x^9+7x^2+1", 19);
-            var a1 = Polynom.Parse("-7x^7-x^5+7x^2+1", 19);
+            var a = Polynom.Parse("+1x^4+2x^3-3x+4",19);
+            var a1 = Polynom.Parse("+x^2-x-2",19);
             Console.WriteLine(a);
             Console.WriteLine(a1);
-            //Console.WriteLine(a-a1);           
-            //Console.WriteLine(a + a1);
-            //Console.WriteLine(a * a1);
+            Console.WriteLine(a-a1);           
+            Console.WriteLine(a + a1);
+            Console.WriteLine(a * a1);
             Console.WriteLine(Polynom.GreatCommonDivisor(a,a1));
             Console.WriteLine();
             Console.WriteLine(a);
             Console.WriteLine(a1);
 
 
+        }
+        public static void TestPolynomValue()
+        {
+            BigInteger x = 0;
+            var a = Polynom.Parse("+1x^4+2x^3-3x+20", 19);
+            Console.WriteLine(a.ToString());
+            Console.WriteLine(string.Format("x = {0},  poly = {1}", x, a.GetValue(x)));
         }
     }
 }

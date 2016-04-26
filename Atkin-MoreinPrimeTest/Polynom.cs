@@ -19,8 +19,9 @@ namespace Atkin_MoreinPrimeTest
         {
             get;
             private set;
-        }
-        List<Monom> coefficients; 
+        }       
+        List<Monom> coefficients;
+        List<BigInteger> roots; // корни многочлена
         #endregion
         #region Конструкторы
         Polynom(Polynom a)
@@ -174,6 +175,36 @@ namespace Atkin_MoreinPrimeTest
             return new Polynom(c, A.Fp);
         }
         /// <summary>
+        /// Полином в степени
+        /// </summary>
+        /// <param name="A">Полином</param>
+        /// <param name="exp">Степень</param>
+        /// <returns></returns>
+        public static Polynom ModPow(Polynom A, BigInteger exp, Polynom mod)
+        {           
+            Polynom t = A;
+            // exp -> 100101010101......
+            StringBuilder sb = new StringBuilder();
+            while(exp.CompareTo(0)==1)
+            {
+                sb.Append(exp & 0x1);
+                exp = exp >> 1;
+            }
+            var expstr = sb.ToString();
+            //------------------------------------
+            for(int i= expstr.Length-2; i>=0;i--)
+            {
+                t = t * t;
+                t = Remainder(t, mod);
+                if(expstr[i] == '1')
+                {
+                    t = t * A;
+                    t = Remainder(t, mod);
+                }
+            }
+            return t;
+        }
+        /// <summary>
         /// Остаток от деления.
         /// </summary>
         /// <param name="a">Делимое</param>
@@ -191,7 +222,7 @@ namespace Atkin_MoreinPrimeTest
                 BigInteger currentInt = a.coefficients[0].Coefficient * Extension.Inverse(b.coefficients[0].Coefficient, b.Fp);
                 c.MultiplyInt(currentInt);
                 div.Add(c);
-                Polynom temp = new Polynom(new List<Monom> { c }, a.Fp);
+                Polynom temp = new Polynom(new List<Monom> {c}, a.Fp);
                 a -= temp * b;
                 a.NormPolynom();
             }
@@ -242,6 +273,11 @@ namespace Atkin_MoreinPrimeTest
                 u = a;
                 v = b;
             }
+            else
+            {
+                u = b;
+                v = a;
+            }
             while(v.Degree!=-1) // пока v>0
             {
                 Polynom utemp = u;
@@ -250,13 +286,136 @@ namespace Atkin_MoreinPrimeTest
             }
             return u;
         }
+        /// <summary>
+        /// Корни многочлена 
+        /// </summary>
+        /// <param name="a">Многочлен</param>
+        /// <returns>List с корнями</returns>
+        public List<BigInteger> GetRoots()
+        {
+            roots = new List<BigInteger>();
+            //-------------Многочлен x^p - x--------------------
+            Polynom t = Parse(string.Format("+x^{0}-x", this.Fp), this.Fp);
+            //----------------------------------------------------
+            Polynom gcd = GreatCommonDivisor(t, this);
+            if (gcd.Degree == 0) return null;
+            if (gcd.GetValue(0) == 0)
+            {
+                roots.Add(0);
+                Polynom rem = Polynom.Remainder(gcd, Parse("+x", this.Fp), out gcd);
+                if (rem.Degree != -1) throw new Exception("Остаток не равен нулю!");
+            }
+            Roots(gcd);
+            return roots;
+        }
+        void Roots(Polynom g)
+        {            
+            if(g.Degree <=2)
+            {
+                // Решение уравнений вида ax^2+bx+c = 0 mod p a,b,c>=0
+                if(g.coefficients[0].Degree==1) // bx + c = 0
+                {
+                    if (g.coefficients.Count == 1) // bx = 0
+                    {
+                        roots.Add(0);
+                        return;
+                    }
+                    else // bx + c = 0
+                    {
+                        BigInteger b = g.coefficients[0].Coefficient;
+                        BigInteger c = g.coefficients[1].Coefficient;
+
+                        BigInteger x = BigInteger.Remainder(BigInteger.Negate(c) * Extension.Inverse(b, g.Fp), g.Fp);
+                        while (x < 0) x += g.Fp;
+                        roots.Add(x);
+                        return;
+                    }
+                    // ошибка
+                }
+                else // ax^2 + bx + c = 0
+                {
+                    if(g.coefficients[1].Degree == 0) // ax^2 + c = 0 
+                    {
+                        BigInteger a = g.coefficients[0].Coefficient;
+                        BigInteger c = g.coefficients[1].Coefficient;
+                        BigInteger ac = BigInteger.Remainder(BigInteger.Negate(c) * Extension.Inverse(a,g.Fp),g.Fp);
+                        BigInteger r = Extension.SquareRootModPrime(ac, g.Fp);
+                        roots.Add(r); // не проверенно
+                        roots.Add(g.Fp - r);
+                        return;
+                    }
+                    else // ax^2 + bx = 0 && ax^2 = 0 && ax^2 + bx + c = 0
+                    {
+                        if(g.coefficients.Count == 1)// ax ^ 2 = 0
+                        {
+                            roots.Add(0);
+                            return;
+                        }
+                        else // ax^2 + bx = 0 && ax^2 + bx + c = 0
+                        {
+                            if (g.coefficients.Count == 2) // ax^2 + bx = 0
+                            {
+                                roots.Add(0);
+                                Polynom div = null;
+                                Polynom.Remainder(g, Parse("+x", this.Fp), out div);
+                                Roots(div);
+                            }
+                            else // ax^2 + bx + c = 0
+                            {
+                                BigInteger a = g.coefficients[0].Coefficient;
+                                BigInteger b = g.coefficients[1].Coefficient;
+                                BigInteger c = g.coefficients[2].Coefficient;
+
+                                BigInteger D = Extension.SquareRootModPrime(BigInteger.Remainder(b * b - 4 * a * c,g.Fp), g.Fp);
+
+                                BigInteger x1 = BigInteger.Remainder((BigInteger.Negate(b) - D) * BigInteger.Remainder(Extension.Inverse(2 * a, g.Fp),g.Fp),g.Fp);
+                                BigInteger x2 = BigInteger.Remainder((BigInteger.Negate(b) + D) * BigInteger.Remainder(Extension.Inverse(2 * a, g.Fp),g.Fp),g.Fp);
+                                while (x1 < 0) x1 += g.Fp;
+                                while (x2 < 0) x2 += g.Fp;
+                                roots.Add(x1);
+                                roots.Add(x2);
+                            }
+                        }
+                    }
+                }             
+            }
+            else
+            {
+                Polynom one = Parse("+1", g.Fp);
+                Polynom h = one;
+                while (h.Degree == 0 || h.Eguals(g) )
+                {
+                    BigInteger a = Extension.Random(1, g.Fp);
+                    Polynom s = ModPow(Parse(string.Format("+x-{0}", a), g.Fp), (g.Fp - 1) / 2, g);
+                    h = Polynom.GreatCommonDivisor(s-one, g);
+                }
+                Polynom div = null;
+                Remainder(g, h, out div);
+                Roots(h);
+                Roots(div);                          
+            }
+        }
+        /// <summary>
+        /// Значение полинома в точке x
+        /// </summary>
+        /// <param name="x"></param>
+        /// <returns></returns>
+        public BigInteger GetValue(BigInteger x)
+        {
+            BigInteger t = 0;
+            foreach(Monom m in coefficients)
+            {
+                t += m.Coefficient * BigInteger.ModPow(x, m.Degree, Fp);
+            }
+            return BigInteger.Remainder(t,Fp);
+        }
         #endregion
         #region Побочные методы
         /// <summary>
         /// Нормировка полинома в заданном поле.
         /// </summary>
         private void NormPolynom()
-        {         
+        {
                 for (int i = 0; i < coefficients.Count; i++)
                 {
                     if (coefficients[i].Coefficient < 0)
@@ -330,7 +489,7 @@ namespace Atkin_MoreinPrimeTest
         /// <remarks>Перед первым членом обязательно указывается знак. Например: Polynom.Parse("+x^3+2x^2+3x^1+4,19) </remarks>
         /// <param name="_poly">Строка с полиномом</param>
         /// <param name="_Fp">Модуль(Поле Галуа)</param>
-        public static Polynom Parse(string _poly, int _Fp)
+        public static Polynom Parse(string _poly, BigInteger _Fp)
         {
             if (_poly == "") throw new Exception("string is Empty"); // пустая строка
 
@@ -505,6 +664,36 @@ namespace Atkin_MoreinPrimeTest
             }
             else
                 Degree = coefficients[0].Degree;
+        }
+        bool Eguals(Polynom b)
+        {
+            if(Fp == b.Fp) // поле одинаковое?
+            {
+                if(Degree == b.Degree) // степень одинаковая?
+                {
+                    if(coefficients.Count == b.coefficients.Count()) // Кол-во мономов одинаковое?
+                    {
+                        for(int i = 0; i<coefficients.Count(); i++)
+                        {
+                            if (coefficients[i].Coefficient != b.coefficients[i].Coefficient
+                                || coefficients[i].Degree != b.coefficients[i].Degree) return false;
+                        }
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                }
+                else
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                return false;
+            }
+            return true;
         }
 
 #endregion
