@@ -12,12 +12,8 @@ namespace Atkin_MoreinPrimeTest
     {
         static void Main(string[] args)
         {
-
             PrimeTesting pt = new PrimeTesting(BigInteger.Pow(2, 89) - 1);
             pt.StartTesting();
-
-
-
             #region Корни
             //BigInteger p = BigInteger.Pow(2, 89) - 1;
             //BigInteger p = 131;

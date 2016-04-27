@@ -1,0 +1,6 @@
+C:\Users\Evgeny_Gorelov\Cloud@Mail.Ru\Учёба\Диплом\Atkin-MoreinPrimeTest\Atkin-MoreinPrimeTest\bin\x64\Debug\Atkin-MoreinPrimeTest.exe.config
+C:\Users\Evgeny_Gorelov\Cloud@Mail.Ru\Учёба\Диплом\Atkin-MoreinPrimeTest\Atkin-MoreinPrimeTest\bin\x64\Debug\Atkin-MoreinPrimeTest.exe
+C:\Users\Evgeny_Gorelov\Cloud@Mail.Ru\Учёба\Диплом\Atkin-MoreinPrimeTest\Atkin-MoreinPrimeTest\bin\x64\Debug\Atkin-MoreinPrimeTest.pdb
+C:\Users\Evgeny_Gorelov\Cloud@Mail.Ru\Учёба\Диплом\Atkin-MoreinPrimeTest\Atkin-MoreinPrimeTest\obj\x64\Debug\Atkin-MoreinPrimeTest.exe
+C:\Users\Evgeny_Gorelov\Cloud@Mail.Ru\Учёба\Диплом\Atkin-MoreinPrimeTest\Atkin-MoreinPrimeTest\obj\x64\Debug\Atkin-MoreinPrimeTest.pdb
+C:\Users\Evgeny_Gorelov\Cloud@Mail.Ru\Учёба\Диплом\Atkin-MoreinPrimeTest\Atkin-MoreinPrimeTest\obj\x64\Debug\Atkin-MoreinPrimeTest.csprojResolveAssemblyReference.cache

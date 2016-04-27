@@ -176,7 +176,7 @@ namespace Atkin_MoreinPrimeTest
         /// </summary>
         /// <param name="D"></param>
         /// <returns></returns>
-        public static List<BigInteger[]> GilbertPolynom(int D)
+        public static ComplexPolynom GilbertPolynom(int D)
         {
             //-----Инициализация------------------------------------------
 
@@ -206,8 +206,8 @@ namespace Atkin_MoreinPrimeTest
                     //---------Установки для многочлена-------------------------      
                     Complex r = new Complex(-b, Math.Sqrt(Math.Abs(D)));
                     r /= 2 * a;
-                    Complex delt1 = Delta(Complex.Exp(4 * Math.PI * r * Complex.ImaginaryOne), 10);
-                    Complex delt2 = Delta(Complex.Exp(2 * Math.PI * r * Complex.ImaginaryOne), 10);
+                    Complex delt1 = Delta(Complex.Exp(4 * Math.PI * r * Complex.ImaginaryOne), 1000);
+                    Complex delt2 = Delta(Complex.Exp(2 * Math.PI * r * Complex.ImaginaryOne), 1000);
                     var f = delt1 / delt2;
                     var j = Complex.Pow(256 * f + 1, 3);
                     j /= f;
@@ -229,7 +229,7 @@ namespace Atkin_MoreinPrimeTest
                 }
                 b++;
             }
-            return red;
+            return T;
 
         } 
 
