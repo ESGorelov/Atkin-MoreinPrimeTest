@@ -46,6 +46,7 @@
   <ItemGroup>
     <Compile Include="Extension.cs" />
     <Compile Include="ComplexPolynom.cs" />
+    <Compile Include="FactorOrders.cs" />
     <Compile Include="Polynom.cs" />
     <Compile Include="PrimeTesting.cs" />
     <Compile Include="Program.cs" />
