@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -57,21 +58,56 @@ namespace Atkin_MoreinPrimeTest
             }                  
         }
 
-        public void StartFact()
+        public void StartFact() // Разложение по методу кто первый
         {
             while(primeNumbers.Count==0)
             {
                 Thread.Sleep(250);
             }
-            for(int i = 0;i<N.Count();i++)
+            Stopwatch st = new Stopwatch();
+            Thread[] factTh = new Thread[N.Count];
+            List<List<BigInteger>> preresult = new List<List<BigInteger>>();
+            for (int i = 0; i < N.Count(); i++)
             {
-                result = GetMnozh(N[i], borderq[i]);
-                if (result != null)
+                preresult.Add(new List<BigInteger>());
+                factTh[i] = new Thread(new ThreadStart(delegate () { preresult[i] = GetMnozh(N[i], borderq[i]); }));
+                factTh[i].Start();
+                Thread.Sleep(100);
+            }
+            st.Start();
+            while(st.ElapsedMilliseconds < 30000) // 5 minuts
+            {
+                Thread.Sleep(500);
+                for(int i=0;i<N.Count;i++)
                 {
-                    NumberResult = i;
+                    if(factTh[i].ThreadState == System.Threading.ThreadState.Stopped)
+                    {
+                        if(preresult[i]!= null && preresult[i].Count!=0)
+                        {
+                            for(int j=0;j<N.Count; j++)
+                            {
+                                if(j!=i)
+                                    factTh[j].Abort();
+                            }
+                            result = preresult[i];
+                            NumberResult = i;
+                            break;
+                        }
+                    }
+                }
+                if(result!= null)
+                {
+                    st.Stop();
                     break;
                 }
-            }                             
+            } 
+            if(result == null)
+            {
+                for (int j = 0; j < N.Count; j++)
+                {
+                    factTh[j].Abort();
+                }
+            }                                 
         }
 
 

@@ -14,23 +14,38 @@ namespace Atkin_MoreinPrimeTest
         static void Main(string[] args)
         {
             #region 1
-            BigInteger N = BigInteger.Pow(2, 89) - 2;
-
+            List<TimeSpan> time = new List<TimeSpan>();
+            Stopwatch st = new Stopwatch();
+            int countfalse = 0;
+            int countprime = 0;
+            int countcomposite = 0;
+            BigInteger N = BigInteger.Pow(2, 254) - 1;
+            //BigInteger N = BigInteger.Parse("618970019642690137449566183");
+            PrimeTesting pt = new PrimeTesting();
             while (true)
             {
                 while (!FactorOrders.MRTest(N, new List<int> { 2, 3, 5, 7, 11 }))
                 {
-                    N++;
+                    N+=2;
                 }
+                pt.SetNewNumber(N);
                 Console.WriteLine(N);
-                PrimeTesting pt = new PrimeTesting(N);
+                st.Start();
                 pt.StartTesting();
-                Console.WriteLine(pt.Certificate);
-                N++;
-                Thread.Sleep(500);
+                st.Stop();
+                time.Add(st.Elapsed);
+                st.Reset();
+                if (pt.Certificate == "Polynom")
+                    countfalse++;
+                else if (pt.Certificate == "Composite")
+                    countcomposite++;
+                else
+                    countprime++;
+                
+                N+=2;
+
             }
             #endregion
-
         }
 
 

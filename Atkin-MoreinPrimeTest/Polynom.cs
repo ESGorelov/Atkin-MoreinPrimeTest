@@ -23,6 +23,7 @@ namespace Atkin_MoreinPrimeTest
         List<Monom> coefficients;
         List<BigInteger> roots; // корни многочлена
         #endregion
+
         #region Конструкторы
         Polynom(Polynom a)
         {
@@ -40,6 +41,16 @@ namespace Atkin_MoreinPrimeTest
         #endregion
 
         #region Математические Операции с Полиномами
+
+        public static Polynom Derivative(Polynom x)
+        {
+            List<Monom> t = new List<Monom>();
+            foreach(var m in x.coefficients)
+            {
+                t.Add(new Monom(m.Degree - 1, BigInteger.Remainder(m.Coefficient * m.Degree, x.Fp)));
+            }
+            return new Polynom(t, x.Fp);
+        }
         /// <summary>
         /// Разность полиномов
         /// </summary>
@@ -282,7 +293,7 @@ namespace Atkin_MoreinPrimeTest
             {
                 Polynom utemp = u;
                 u = v;               
-                v = Polynom.Remainder(utemp, v);
+                v = Polynom.QuickRemainder(utemp, v);
             }
             return u;
         }
@@ -294,18 +305,27 @@ namespace Atkin_MoreinPrimeTest
         public List<BigInteger> GetRoots()
         {
             roots = new List<BigInteger>();
-            //-------------Многочлен x^p - x--------------------
-            Polynom t = Parse(string.Format("+x^{0}-x", this.Fp), this.Fp);
-            //----------------------------------------------------
-            Polynom gcd = GreatCommonDivisor(t, this);
-            if (gcd.Degree == 0) return null;
-            if (gcd.GetValue(0) == 0)
+            if (Degree <= 2)
             {
-                roots.Add(0);
-                Polynom rem = Polynom.Remainder(gcd, Parse("+x", this.Fp), out gcd);
-                if (rem.Degree != -1) throw new Exception("Остаток не равен нулю!");
+                Polynom x = new Polynom(coefficients, Fp);
+                Roots(x);
             }
-            Roots(gcd);
+            else
+            {
+                roots = new List<BigInteger>();
+                //-------------Многочлен x^p - x--------------------
+                Polynom t = Parse(string.Format("+x^{0}-x", this.Fp), this.Fp);
+                //----------------------------------------------------
+                Polynom gcd = GreatCommonDivisor(t, this);
+                if (gcd.Degree == 0) return null;
+                if (gcd.GetValue(0) == 0)
+                {
+                    roots.Add(0);
+                    Polynom rem = Polynom.Remainder(gcd, Parse("+x", this.Fp), out gcd);
+                    if (rem.Degree != -1) throw new Exception("Остаток не равен нулю!");
+                }
+                Roots(gcd);
+            }
             return roots;
         }
         void Roots(Polynom g)
@@ -410,6 +430,7 @@ namespace Atkin_MoreinPrimeTest
             return BigInteger.Remainder(t,Fp);
         }
         #endregion
+
         #region Побочные методы
         /// <summary>
         /// Нормировка полинома в заданном поле.
@@ -696,7 +717,144 @@ namespace Atkin_MoreinPrimeTest
             return true;
         }
 
-#endregion
+        #endregion
+
+
+        #region Быстрое деление Многочленов
+        /// <summary>
+        /// Укорачивание до указанной степени 
+        /// </summary>
+        /// <param name="a">Полином</param>
+        /// <param name="deg">Степень укорачивания</param>
+        /// <returns>Укороченный полином степени меньшей deg</returns>
+        static Polynom Shortening(Polynom a,BigInteger deg)
+        {
+            List<Monom> coef = new List<Monom>();
+            foreach(var m in a.coefficients)
+            {
+                coef.Add(m);
+            }             
+            for(int i = coef.Count-1; i >= 0; i--)
+            {
+                if(coef[i].Degree >= deg)
+                {
+                    coef.RemoveRange(0, i + 1);
+                    break;
+                }
+            }
+            return new Polynom(coef, a.Fp);
+        }
+        /// <summary>
+        /// Быстрое обращение многочлена
+        /// </summary>
+        /// <param name="x">Многочлен</param>
+        /// <param name="deg">Степень укорачивания</param>
+        /// <returns></returns>
+        static Polynom R(Polynom x, BigInteger deg)
+        {
+            Polynom g = Polynom.Parse("+1", x.Fp);
+            Polynom two = Polynom.Parse("+2", x.Fp);
+            BigInteger n = 1;
+            while(n < deg+1)
+            {
+                n = n << 1;
+                if (n > deg + 1) n = deg + 1;
+                Polynom h = Shortening(x, n);
+                h = Shortening(h * g, n);
+                g = Shortening(g * (two - h), n);
+            }
+            return g;
+        }
+        /// <summary>
+        /// Померанц 575 страница
+        /// </summary>
+        /// <param name="x"></param>
+        /// <param name="deg"></param>
+        /// <returns></returns>
+        public static Polynom rev(Polynom x, BigInteger deg)
+        {
+            //Формируем список со степенями полинома x
+            List<BigInteger> degree = new List<BigInteger>();
+            foreach(var a in x.coefficients)
+            {
+                degree.Add(a.Degree);
+            }
+            List<Monom> temp = new List<Monom>();
+            int i = 0;
+            while(i<degree.Count)
+            {
+                BigInteger d = degree[i];
+                BigInteger j = deg - d;
+                if (j < 0)
+                {
+                    i++;
+                    continue;
+                }
+                BigInteger cf = SearchCoefWithDeg(x, deg - j);
+                if (cf != 0)
+                {
+                    temp.Add(new Monom(j, cf));
+                }
+                i++;
+            }            
+            return new Polynom(temp, x.Fp);
+        }
+        /// <summary>
+        /// Померанц 575 страница
+        /// </summary>
+        /// <param name="x"></param>
+        /// <param name="deg"></param>
+        /// <returns></returns>
+        static BigInteger ind(Polynom x, BigInteger deg)
+        {
+            int i = x.coefficients.Count() - 1;
+            while (x.coefficients[i].Degree < deg)
+            {
+                i--;
+                if (i < 0) return 0;
+            }
+            return x.coefficients[i].Degree;
+        }
+        /// <summary>
+        /// Коэффициент при степени
+        /// </summary>
+        /// <param name="x">Полином</param>
+        /// <param name="deg">Необходимая степень</param>
+        /// <returns></returns>
+        static BigInteger SearchCoefWithDeg(Polynom x, BigInteger deg)
+        {
+            int i = 0;
+            while(x.coefficients[i].Degree>deg)
+            {
+                i++;
+            }
+            if (x.coefficients[i].Degree == deg)
+                return x.coefficients[i].Coefficient;
+            else
+                return 0;
+        }
+
+
+        public static Polynom QuickRemainder(Polynom x, Polynom y)
+        {
+            if (y.Degree == 0) return new Polynom(new List<Monom> { }, x.Fp);
+            BigInteger d = x.Degree - y.Degree;
+            if (d < 0) return x;
+
+            Polynom X = rev(x, x.Degree);
+            Polynom Y = rev(y, y.Degree);
+
+            Polynom q = R(Y, d);
+
+            q = Shortening(q * X, d + 1);
+            Polynom r = X - q * Y;
+            BigInteger i = ind(r, d + 1);
+            Remainder(r, Parse(string.Format("+x^{0}", i), x.Fp), out r);
+            return rev(r, x.Degree - i);
+        }
+        #endregion
+
+
     }
     struct Monom
     {

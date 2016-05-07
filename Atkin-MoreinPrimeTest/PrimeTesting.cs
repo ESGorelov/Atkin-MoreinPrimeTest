@@ -50,13 +50,9 @@ namespace Atkin_MoreinPrimeTest
         #endregion
 
         #region Конструкторы
-        private PrimeTesting()
+    
+        public PrimeTesting()
         {
-
-        }
-        public PrimeTesting(BigInteger _number)
-        {
-            Number = _number;
             Cert = new StringBuilder();
             fct = new FactorOrders();
         }
@@ -68,14 +64,26 @@ namespace Atkin_MoreinPrimeTest
             BigInteger res = Testing();  
             while(res!=-1 && res!=1)
             {
+                if (res == -5) break;
                 Number = res;
                 res = Testing();
             }      
             if(res == -1)
             {
                 Cert = new StringBuilder("Composite");
-            }           
+            } else if(res == -5)
+            {
+                Cert = new StringBuilder("Polynom");
+            }          
         }
+        public void SetNewNumber(BigInteger N)
+        {
+            Cert = new StringBuilder();
+            if(D.Length>30)
+                D = new int[] { -3, -4, -7, -8, -11, -19, -43, -67, -163, -15, -20, -24, -35, -40, -51, -52, -88, -91, -115, -123, -148, -187, -232, -235, -267, -403, -427 };
+            Number = N;
+        }
+
         BigInteger Testing(int _currentD = 0)
         {
             //--наименьшее псевдопростое по 4 базам
@@ -85,6 +93,11 @@ namespace Atkin_MoreinPrimeTest
                 else
                     return -1;
 
+            if(_currentD == D.Length) //Кончились дискриминанты
+            {
+                D = FundamentalDiscrim(9000,D);
+                return Testing(_currentD);
+            }
             int currentD = _currentD;
             //--------------L(D,N) = 1------------------------------------
             while (Extension.Lezhandr(D[currentD], Number) != 1)
@@ -92,8 +105,8 @@ namespace Atkin_MoreinPrimeTest
                 currentD++;
                 if (currentD == D.Length)
                 {
-                    D = FundamentalDiscrim(9000);
-                    return Testing();
+                    D = FundamentalDiscrim(9000,D);
+                    return Testing(_currentD);
                 }// Кончились дискриминанты
             }
             //-----------Пытаемся-найти-представление-4p=u^2+|D|v^2-----------------------   
@@ -108,8 +121,9 @@ namespace Atkin_MoreinPrimeTest
             }
             if (currentD == D.Length)
             {
-                D = FundamentalDiscrim(9000);
-                return Testing();
+                if (currentD > 2000) return -1;
+                D = FundamentalDiscrim(9000,D);
+                return Testing(currentD);
             }// Кончились дискриминанты
             //-----------------------------------------------------------------------
             //-------------------Получаем возможные порядки------------------------------
@@ -144,9 +158,17 @@ namespace Atkin_MoreinPrimeTest
                 fct.StartFact();
                 if (fct.result != null)
                 {
+                    //---------------Если попал простой порядок-----------------------
+                    if(fct.result.Count == 1)
+                    {
+                        ordersCurve.RemoveRange(0, fct.NumberResult + 1);
+                        fct.SetNewNumbers(ordersCurve);
+                        continue;
+                    }
                     BigInteger orderCurve = ordersCurve[fct.NumberResult];
                     //-----------------Получаем параметры кривой---------------------
                     var curveParam = GetCurveComplexMultiply(D[currentD]);
+                    if (curveParam == null) return -5;// Проблемы с нахождением корней многочлена
                     var paramCurve = GetCurveParamForOrder(orderCurve, curveParam);
                     if (paramCurve == null)
                     {
@@ -164,7 +186,8 @@ namespace Atkin_MoreinPrimeTest
                     {
                         P.NexPoint();
                         U = EllipticCurvePoint.Multiply(k, P);
-                        if (U.CheckPoint() == false) return -1; // Составное
+                        if (U.CheckPoint() == false)
+                            return -1; // Составное
                     }
                     var V = EllipticCurvePoint.Multiply(fct.result[fct.result.Count - 1], U);
                     if (V.X != 0 && V.Z != 0)
@@ -227,14 +250,47 @@ namespace Atkin_MoreinPrimeTest
                 ComplexPolynom GilbPol = Extension.GilbertPolynom(D);
                 Polynom GilbPolFp = GilbPol.GetPolynomReal(Number);
                 //---------------------------------------------------------------
-                //-----------------Получение корня полинома----------------------       
-                using (StreamWriter sw = new StreamWriter(new FileStream("polynom.txt", FileMode.Append)))
+                //-----------------Получение корня полинома----------------------   
+
+                BigInteger root;
+                if (GilbPolFp.Degree <= 2)
                 {
-                    sw.WriteLine(GilbPolFp + " mod " + Number);
-                    sw.Close();
+                    var roots = GilbPolFp.GetRoots();
+                    if (roots.Count != 0)
+                        root = roots[0];
+                    else
+                    {
+                        return null;
+                    }
                 }
-                Console.WriteLine("Введите один любой корень данного полинома");
-                BigInteger root = BigInteger.Parse(Console.ReadLine());
+                else
+                {
+                    var nod = Polynom.GreatCommonDivisor(GilbPolFp, Polynom.Derivative(GilbPolFp));
+                    if(nod.Degree!=0 && nod.Degree<3)
+                    {
+                        var roots = nod.GetRoots();
+                        if (roots.Count != 0)
+                            root = roots[0];
+                        else
+                        {
+                            return null;
+                        }
+                    }
+                    else
+                    {
+                        using (StreamWriter sw = new StreamWriter(new FileStream("polynom.txt", FileMode.Append)))
+                        {
+                            sw.WriteLine("//------------------------------------------------------------------------");
+                            sw.WriteLine(Number);
+                            sw.WriteLine("D = " + D);
+                            sw.WriteLine(GilbPolFp + " mod " + Number);
+                            sw.WriteLine("//------------------------------------------------------------------------");
+                            sw.Close();
+                        }
+                        return null;
+                    }                   
+                }
+
                 //---------------------------------------------------------------
                 //------------------Получение параметров-------------------------
                 BigInteger c = root * Extension.Inverse(root - 1728, Number);
@@ -310,9 +366,9 @@ namespace Atkin_MoreinPrimeTest
         /// </summary>
         /// <param name="border">Граница</param>
         /// <returns>Массив дискриминантов</returns>
-        private static int[] FundamentalDiscrim(int border)
+        private static int[] FundamentalDiscrim(int border, int[] _oldD)
         {
-            List<int> d = new List<int>();
+            List<int> d = _oldD.ToList<int>();
             int[] prime = new int[] { 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131, 137, 139, 149, 151, 157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223, 227, 229, 233, 239, 241, 251, 257, 263, 269, 271 };
             for (int i = 1; i < border; i++)
             {
@@ -330,7 +386,10 @@ namespace Atkin_MoreinPrimeTest
                     }
                     if (t != 0)
                     {
-                        d.Add(-i);
+                        if(!d.Contains(-i))
+                        {
+                            d.Add(-i);
+                        }
                     }
                 }
             }
