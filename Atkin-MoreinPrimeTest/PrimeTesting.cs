@@ -4,22 +4,17 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Numerics;
-using EllipticCurve;
-using System.IO;
 
 namespace Atkin_MoreinPrimeTest
 {
     class PrimeTesting
     {
-        #region Константы
+        #region Свойства
         /// <summary>
         /// Дискриминанты с числом классов 1 и 2 по возрастанию
         /// </summary>
         private int[] D = new int [] {-3,-4,-7,-8,-11,-19,-43,-67,-163,-15,-20,-24,-35,-40,-51,-52,-88,-91,-115,-123,-148,-187,-232,-235,-267,-403,-427};
-
-        #endregion
-
-        #region Свойства
+    
         /// <summary>
         /// Число для тестрования на простоту
         /// </summary>
@@ -33,6 +28,7 @@ namespace Atkin_MoreinPrimeTest
         /// </summary>
         private FactorOrders fct;
         private StringBuilder Cert;
+        private Dictionary<int, ComplexPolynom> GilbertPolynoms;
         /// <summary>
         /// Сертификат числа
         /// </summary>
@@ -55,32 +51,36 @@ namespace Atkin_MoreinPrimeTest
         {
             Cert = new StringBuilder();
             fct = new FactorOrders();
+            GilbertPolynoms = new Dictionary<int, ComplexPolynom>();
         }
         #endregion
 
         #region Методы
         public void StartTesting()
         {
+            if (!FactorOrders.MRTest(Number, new List<int> { 2, 3, 5, 7, 11}))
+            {
+                Cert = new StringBuilder("Composite");
+                return;
+            }
             BigInteger res = Testing();  
             while(res!=-1 && res!=1)
             {
-                if (res == -5) break;
+                if (res == -2) break;
                 Number = res;
                 res = Testing();
             }      
             if(res == -1)
             {
                 Cert = new StringBuilder("Composite");
-            } else if(res == -5)
+            } else if(res == -2)
             {
-                Cert = new StringBuilder("Polynom");
+                Cert = new StringBuilder("Error");
             }          
         }
         public void SetNewNumber(BigInteger N)
         {
             Cert = new StringBuilder();
-            if(D.Length>30)
-                D = new int[] { -3, -4, -7, -8, -11, -19, -43, -67, -163, -15, -20, -24, -35, -40, -51, -52, -88, -91, -115, -123, -148, -187, -232, -235, -267, -403, -427 };
             Number = N;
         }
 
@@ -88,15 +88,16 @@ namespace Atkin_MoreinPrimeTest
         {
             //--наименьшее псевдопростое по 4 базам
             if (Number < 3215031751)
-                if (FactorOrders.MRTest(Number, new List<int> { 2, 3, 5, 7 }))
+                if (FactorOrders.MRTest(Number, new List<int> { 2, 3, 5, 7, 11 }))
                     return 1;
                 else
                     return -1;
 
             if(_currentD == D.Length) //Кончились дискриминанты
             {
-                D = FundamentalDiscrim(9000,D);
-                return Testing(_currentD);
+                //D = FundamentalDiscrim(9000,D);
+                //return Testing(_currentD);
+                return -2;
             }
             int currentD = _currentD;
             //--------------L(D,N) = 1------------------------------------
@@ -105,8 +106,9 @@ namespace Atkin_MoreinPrimeTest
                 currentD++;
                 if (currentD == D.Length)
                 {
-                    D = FundamentalDiscrim(9000,D);
-                    return Testing(_currentD);
+                    //D = FundamentalDiscrim(9000,D);
+                    //return Testing(_currentD);
+                    return -2;
                 }// Кончились дискриминанты
             }
             //-----------Пытаемся-найти-представление-4p=u^2+|D|v^2-----------------------   
@@ -121,9 +123,9 @@ namespace Atkin_MoreinPrimeTest
             }
             if (currentD == D.Length)
             {
-                if (currentD > 2000) return -1;
-                D = FundamentalDiscrim(9000,D);
-                return Testing(currentD);
+                //D = FundamentalDiscrim(9000,D);
+                //return Testing(_currentD);
+                return -2;
             }// Кончились дискриминанты
             //-----------------------------------------------------------------------
             //-------------------Получаем возможные порядки------------------------------
@@ -168,23 +170,29 @@ namespace Atkin_MoreinPrimeTest
                     BigInteger orderCurve = ordersCurve[fct.NumberResult];
                     //-----------------Получаем параметры кривой---------------------
                     var curveParam = GetCurveComplexMultiply(D[currentD]);
-                    if (curveParam == null) return -5;// Проблемы с нахождением корней многочлена
+                  //  var curveParam = GetClearCurveComplexMultiply(D[currentD]);
+
+                    if (curveParam == null) return -2;// Проблемы с нахождением корней многочлена
                     var paramCurve = GetCurveParamForOrder(orderCurve, curveParam);
                     if (paramCurve == null)
+                        return -1; // Составное
+                    if (paramCurve.Length == 1)
                     {
                         ordersCurve.RemoveRange(0, fct.NumberResult + 1);
                         fct.SetNewNumbers(ordersCurve);
                         continue;
                     }
+
                     //---------------------------------------------------------------
                     //-------------Операции с точкой---------------------------------
                     EllipticCurvePoint P = new EllipticCurvePoint(Number, paramCurve[0], paramCurve[1]);
                     BigInteger k = orderCurve / fct.result[fct.result.Count - 1];
                     var U = EllipticCurvePoint.Multiply(k, P);
-                    if (U.CheckPoint() == false) return -1; // Составное
+                    if (U.CheckPoint() == false)
+                        return -1; // Составное
                     while (U.X == 0 && U.Z == 0)
                     {
-                        P.NexPoint();
+                        P.NextPoint();
                         U = EllipticCurvePoint.Multiply(k, P);
                         if (U.CheckPoint() == false)
                             return -1; // Составное
@@ -204,6 +212,7 @@ namespace Atkin_MoreinPrimeTest
                     Cert.Remove(Cert.Length - 3, 3);
                     Cert.Append("\r\n");
                     Cert.Append(string.Format("E({0}, {1}, {2}, {3}, {4}, {5} )", P.A, P.B, P.P, P.X, P.Y, P.Z)+ "\r\n");
+                    Cert.Append("\r\n");
                     //---------------------------------------------------------------
                     //-----------Возврат числа q-------------------------------------
 
@@ -225,7 +234,7 @@ namespace Atkin_MoreinPrimeTest
         /// </summary>
         /// <param name="D">Фундаментальный Дискриминант</param>
         /// <returns></returns>
-        private static List<BigInteger[]> GetCurveComplexMultiply(int D)
+        private  List<BigInteger[]> GetCurveComplexMultiply(int D)
         {
             List<BigInteger[]> paramCurve = new List<BigInteger[]>();
             BigInteger g = GetNonQuadr();
@@ -233,7 +242,7 @@ namespace Atkin_MoreinPrimeTest
             {
                 for(int i = 0; i < 6; i++)
                 {
-                    paramCurve.Add(new BigInteger[] {0,BigInteger.ModPow(-g,i,Number)});
+                    paramCurve.Add(new BigInteger[] {0,-BigInteger.ModPow(g,i,Number)});
                 }
                 return paramCurve;            
             }
@@ -241,14 +250,25 @@ namespace Atkin_MoreinPrimeTest
             {
                 for (int i = 0; i < 4; i++)
                 {
-                    paramCurve.Add(new BigInteger[] { BigInteger.ModPow(-g, i, Number), 0 });
+                    paramCurve.Add(new BigInteger[] { -BigInteger.ModPow(g, i, Number), 0 });
                 }
                 return paramCurve;
             }
             else
             {
-                ComplexPolynom GilbPol = Extension.GilbertPolynom(D);
-                Polynom GilbPolFp = GilbPol.GetPolynomReal(Number);
+                Polynom GilbPolFp;
+                if (GilbertPolynoms.ContainsKey(D))
+                {
+                    ComplexPolynom GilbPol;
+                    GilbertPolynoms.TryGetValue(D, out GilbPol);
+                    GilbPolFp = GilbPol.GetPolynomReal(Number);
+                }
+                else
+                {
+                    ComplexPolynom GilbPol = Extension.GilbertPolynom(D);
+                    GilbertPolynoms.Add(D, GilbPol);
+                    GilbPolFp = GilbPol.GetPolynomReal(Number);
+                }
                 //---------------------------------------------------------------
                 //-----------------Получение корня полинома----------------------   
 
@@ -265,30 +285,33 @@ namespace Atkin_MoreinPrimeTest
                 }
                 else
                 {
-                    var nod = Polynom.GreatCommonDivisor(GilbPolFp, Polynom.Derivative(GilbPolFp));
-                    if(nod.Degree!=0 && nod.Degree<3)
-                    {
-                        var roots = nod.GetRoots();
-                        if (roots.Count != 0)
-                            root = roots[0];
-                        else
-                        {
-                            return null;
-                        }
-                    }
-                    else
-                    {
-                        using (StreamWriter sw = new StreamWriter(new FileStream("polynom.txt", FileMode.Append)))
-                        {
-                            sw.WriteLine("//------------------------------------------------------------------------");
-                            sw.WriteLine(Number);
-                            sw.WriteLine("D = " + D);
-                            sw.WriteLine(GilbPolFp + " mod " + Number);
-                            sw.WriteLine("//------------------------------------------------------------------------");
-                            sw.Close();
-                        }
-                        return null;
-                    }                   
+                    #region Поиск нод 
+                    //var nod = Polynom.GreatCommonDivisor(GilbPolFp, Polynom.Derivative(GilbPolFp));
+                    //if(nod.Degree!=0 && nod.Degree<3)
+                    //{
+                    //    var roots = nod.GetRoots();
+                    //    if (roots.Count != 0)
+                    //        root = roots[0];
+                    //    else
+                    //    {
+                    //        return null;
+                    //    }
+                    //}
+                    //else
+                    //{
+                    //    using (StreamWriter sw = new StreamWriter(new FileStream("polynom.txt", FileMode.Append)))
+                    //    {
+                    //        sw.WriteLine("//------------------------------------------------------------------------");
+                    //        sw.WriteLine(Number);
+                    //        sw.WriteLine("D = " + D);
+                    //        sw.WriteLine(GilbPolFp + " mod " + Number);
+                    //        sw.WriteLine("//------------------------------------------------------------------------");
+                    //        sw.Close();
+                    //    }
+                    //    return null;
+                    //}   
+                    #endregion
+                    return null;
                 }
 
                 //---------------------------------------------------------------
@@ -303,6 +326,188 @@ namespace Atkin_MoreinPrimeTest
                 return paramCurve;          
                 //---------------------------------------------------------------
             }
+        }
+        /// <summary>
+        /// Явные Параметры кривых полученных комплексным умножением
+        /// </summary>
+        /// <param name="D">Фундаментальный дискриминант</param>
+        /// <returns></returns>
+        private static List<BigInteger[]> GetClearCurveComplexMultiply(int D)
+        {
+            Task<BigInteger> t1 = Task<BigInteger>.Factory.StartNew(delegate() { return GetNonQuadr(); });
+            List<BigInteger[]> paramCurve = new List<BigInteger[]>();
+            switch (D)
+            {
+                case (-7):
+                    BigInteger r = 125;
+                    BigInteger s = 189;
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * r * BigInteger.ModPow(s, 3, Number), Number), BigInteger.Remainder(2 * r * BigInteger.ModPow(s, 5, Number), Number) });
+                    t1.Wait();
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * r * BigInteger.ModPow(s, 3, Number)* BigInteger.ModPow(t1.Result, 2, Number), Number), BigInteger.Remainder(2 * r * BigInteger.ModPow(s, 5, Number) * BigInteger.ModPow(t1.Result, 3, Number), Number) });
+                    break;
+                case (-8):
+                    BigInteger r0 = 125;
+                    BigInteger s0 = 98;
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * r0 * BigInteger.ModPow(s0, 3, Number), Number), BigInteger.Remainder(2 * r0 * BigInteger.ModPow(s0, 5, Number), Number) });
+                    t1.Wait();
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * r0 * BigInteger.ModPow(s0, 3, Number) * BigInteger.ModPow(t1.Result, 2, Number), Number), BigInteger.Remainder(2 * r0 * BigInteger.ModPow(s0, 5, Number) * BigInteger.ModPow(t1.Result, 3, Number), Number) });
+                    break;
+                case (-11):
+                    BigInteger r1 = 512;
+                    BigInteger s1 = 539;
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * r1 * BigInteger.ModPow(s1, 3, Number), Number), BigInteger.Remainder(2 * r1 * BigInteger.ModPow(s1, 5, Number), Number) });
+                    t1.Wait();
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * r1 * BigInteger.ModPow(s1, 3, Number) * BigInteger.ModPow(t1.Result, 2, Number), Number), BigInteger.Remainder(2 * r1 * BigInteger.ModPow(s1, 5, Number) * BigInteger.ModPow(t1.Result, 3, Number), Number) });
+                    break;
+                case (-19):
+                    BigInteger r2 = 512;
+                    BigInteger s2 = 512;
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * r2 * BigInteger.ModPow(s2, 3, Number), Number), BigInteger.Remainder(2 * r2 * BigInteger.ModPow(s2, 5, Number), Number) });
+                    t1.Wait();
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * r2 * BigInteger.ModPow(s2, 3, Number) * BigInteger.ModPow(t1.Result, 2, Number), Number), BigInteger.Remainder(2 * r2 * BigInteger.ModPow(s2, 5, Number) * BigInteger.ModPow(t1.Result, 3, Number), Number) });
+                    break;
+                case (-43):
+                    BigInteger r3 = 512000;
+                    BigInteger s3 = 512001;
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * r3 * BigInteger.ModPow(s3, 3, Number), Number), BigInteger.Remainder(2 * r3 * BigInteger.ModPow(s3, 5, Number), Number) });
+                    t1.Wait();
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * r3 * BigInteger.ModPow(s3, 3, Number) * BigInteger.ModPow(t1.Result, 2, Number), Number), BigInteger.Remainder(2 * r3 * BigInteger.ModPow(s3, 5, Number) * BigInteger.ModPow(t1.Result, 3, Number), Number) });
+                    break;
+                case (-67):
+                    BigInteger r4 = 85184000;
+                    BigInteger s4 = 85184001;
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * r4 * BigInteger.ModPow(s4, 3, Number), Number), BigInteger.Remainder(2 * r4 * BigInteger.ModPow(s4, 5, Number), Number) });
+                    t1.Wait();
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * r4 * BigInteger.ModPow(s4, 3, Number) * BigInteger.ModPow(t1.Result, 2, Number), Number), BigInteger.Remainder(2 * r4 * BigInteger.ModPow(s4, 5, Number) * BigInteger.ModPow(t1.Result, 3, Number), Number) });
+                    break;
+                case (-163):
+                    BigInteger r5 = 151931373056000;
+                    BigInteger s5 = 151931373056001;
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * r5 * BigInteger.ModPow(s5, 3, Number), Number), BigInteger.Remainder(2 * r5 * BigInteger.ModPow(s5, 5, Number), Number) });
+                    t1.Wait();
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * r5 * BigInteger.ModPow(s5, 3, Number) * BigInteger.ModPow(t1.Result, 2, Number), Number), BigInteger.Remainder(2 * r5 * BigInteger.ModPow(s5, 5, Number) * BigInteger.ModPow(t1.Result, 3, Number), Number) });
+                    break;
+                case (-15):
+                    BigInteger r6 = 1225 - 2080 * Extension.SquareRootModPrime(5,Number);
+                    BigInteger s6 = 5929;
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * r6 * BigInteger.ModPow(s6, 3, Number), Number), BigInteger.Remainder(2 * r6 * BigInteger.ModPow(s6, 5, Number), Number) });
+                    t1.Wait();
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * r6 * BigInteger.ModPow(s6, 3, Number) * BigInteger.ModPow(t1.Result, 2, Number), Number), BigInteger.Remainder(2 * r6 * BigInteger.ModPow(s6, 5, Number) * BigInteger.ModPow(t1.Result, 3, Number), Number) });
+                    break;
+                case (-20):
+                    BigInteger r7 = 108250 + 29835 * Extension.SquareRootModPrime(5, Number);
+                    BigInteger s7 = 174724;
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * r7 * BigInteger.ModPow(s7, 3, Number), Number), BigInteger.Remainder(2 * r7 * BigInteger.ModPow(s7, 5, Number), Number) });
+                    t1.Wait();
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * r7 * BigInteger.ModPow(s7, 3, Number) * BigInteger.ModPow(t1.Result, 2, Number), Number), BigInteger.Remainder(2 * r7 * BigInteger.ModPow(s7, 5, Number) * BigInteger.ModPow(t1.Result, 3, Number), Number) });
+                    break;
+                case (-24):
+                    BigInteger r8 = 1757 - 494 * Extension.SquareRootModPrime(2, Number);
+                    BigInteger s8 = 1058;
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * r8 * BigInteger.ModPow(s8, 3, Number), Number), BigInteger.Remainder(2 * r8 * BigInteger.ModPow(s8, 5, Number), Number) });
+                    t1.Wait();
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * r8 * BigInteger.ModPow(s8, 3, Number) * BigInteger.ModPow(t1.Result, 2, Number), Number), BigInteger.Remainder(2 * r8 * BigInteger.ModPow(s8, 5, Number) * BigInteger.ModPow(t1.Result, 3, Number), Number) });
+                    break;
+                case (-35):
+                    BigInteger r9 = -1126400 - 1589760 * Extension.SquareRootModPrime(5, Number);
+                    BigInteger s9 = 2428447;
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * r9 * BigInteger.ModPow(s9, 3, Number), Number), BigInteger.Remainder(2 * r9 * BigInteger.ModPow(s9, 5, Number), Number) });
+                    t1.Wait();
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * r9 * BigInteger.ModPow(s9, 3, Number) * BigInteger.ModPow(t1.Result, 2, Number), Number), BigInteger.Remainder(2 * r9 * BigInteger.ModPow(s9, 5, Number) * BigInteger.ModPow(t1.Result, 3, Number), Number) });
+                    break;
+                case (-40):
+                    BigInteger r11 = 54175 - 1020 * Extension.SquareRootModPrime(5, Number);
+                    BigInteger s11 = 51894;
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * r11 * BigInteger.ModPow(s11, 3, Number), Number), BigInteger.Remainder(2 * r11 * BigInteger.ModPow(s11, 5, Number), Number) });
+                    t1.Wait();
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * r11 * BigInteger.ModPow(s11, 3, Number) * BigInteger.ModPow(t1.Result, 2, Number), Number), BigInteger.Remainder(2 * r11 * BigInteger.ModPow(s11, 5, Number) * BigInteger.ModPow(t1.Result, 3, Number), Number) });
+                    break;
+                case (-51):
+                    BigInteger r12 = 75520 - 7936 * Extension.SquareRootModPrime(17, Number);
+                    BigInteger s12 = 108241;
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * r12 * BigInteger.ModPow(s12, 3, Number), Number), BigInteger.Remainder(2 * r12 * BigInteger.ModPow(s12, 5, Number), Number) });
+                    t1.Wait();
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * r12 * BigInteger.ModPow(s12, 3, Number) * BigInteger.ModPow(t1.Result, 2, Number), Number), BigInteger.Remainder(2 * r12 * BigInteger.ModPow(s12, 5, Number) * BigInteger.ModPow(t1.Result, 3, Number), Number) });
+                    break;
+                case (-52):
+                    BigInteger rq = 1778750 + 5125 * Extension.SquareRootModPrime(13, Number);
+                    BigInteger sq = 1797228;
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * rq * BigInteger.ModPow(sq, 3, Number), Number), BigInteger.Remainder(2 * rq * BigInteger.ModPow(sq, 5, Number), Number) });
+                    t1.Wait();
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * rq * BigInteger.ModPow(sq, 3, Number) * BigInteger.ModPow(t1.Result, 2, Number), Number), BigInteger.Remainder(2 * rq * BigInteger.ModPow(sq, 5, Number) * BigInteger.ModPow(t1.Result, 3, Number), Number) });
+                    break;
+                case (-88):
+                    BigInteger rw = 181713125 - 44250 * Extension.SquareRootModPrime(2, Number);
+                    BigInteger sw = 181650546;
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * rw * BigInteger.ModPow(sw, 3, Number), Number), BigInteger.Remainder(2 * rw * BigInteger.ModPow(sw, 5, Number), Number) });
+                    t1.Wait();
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * rw * BigInteger.ModPow(sw, 3, Number) * BigInteger.ModPow(t1.Result, 2, Number), Number), BigInteger.Remainder(2 * rw * BigInteger.ModPow(sw, 5, Number) * BigInteger.ModPow(t1.Result, 3, Number), Number) });
+                    break;
+                case (-91):
+                    BigInteger re = 74752 - 36352 * Extension.SquareRootModPrime(13, Number);
+                    BigInteger se = 205821;
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * re * BigInteger.ModPow(se, 3, Number), Number), BigInteger.Remainder(2 * re * BigInteger.ModPow(se, 5, Number), Number) });
+                    t1.Wait();
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * re * BigInteger.ModPow(se, 3, Number) * BigInteger.ModPow(t1.Result, 2, Number), Number), BigInteger.Remainder(2 * re * BigInteger.ModPow(se, 5, Number) * BigInteger.ModPow(t1.Result, 3, Number), Number) });
+                    break;
+                case (-115):
+                    BigInteger ra = 269593600 - 89157120 * Extension.SquareRootModPrime(5, Number);
+                    BigInteger sa = 468954981;
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * ra * BigInteger.ModPow(sa, 3, Number), Number), BigInteger.Remainder(2 * ra * BigInteger.ModPow(sa, 5, Number), Number) });
+                    t1.Wait();
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * ra * BigInteger.ModPow(sa, 3, Number) * BigInteger.ModPow(t1.Result, 2, Number), Number), BigInteger.Remainder(2 * ra * BigInteger.ModPow(sa, 5, Number) * BigInteger.ModPow(t1.Result, 3, Number), Number) });
+                    break;
+                case (-123):
+                    BigInteger rs = 1025058304000 - 1248832000 * Extension.SquareRootModPrime(41, Number);
+                    BigInteger ss = 1033054730449;
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * rs * BigInteger.ModPow(ss, 3, Number), Number), BigInteger.Remainder(2 * rs * BigInteger.ModPow(ss, 5, Number), Number) });
+                    t1.Wait();
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * rs * BigInteger.ModPow(ss, 3, Number) * BigInteger.ModPow(t1.Result, 2, Number), Number), BigInteger.Remainder(2 * rs * BigInteger.ModPow(ss, 5, Number) * BigInteger.ModPow(t1.Result, 3, Number), Number) });
+                    break;
+                case (-148):
+                    BigInteger rd = 499833128054750 + 356500625 * Extension.SquareRootModPrime(37, Number);
+                    BigInteger sd = 499835296563372;
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * rd * BigInteger.ModPow(sd, 3, Number), Number), BigInteger.Remainder(2 * rd * BigInteger.ModPow(sd, 5, Number), Number) });
+                    t1.Wait();
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * rd * BigInteger.ModPow(sd, 3, Number) * BigInteger.ModPow(t1.Result, 2, Number), Number), BigInteger.Remainder(2 * rd * BigInteger.ModPow(sd, 5, Number) * BigInteger.ModPow(t1.Result, 3, Number), Number) });
+                    break;
+                case (-187):
+                    BigInteger rz = 91878880000 - 1074017568000 * Extension.SquareRootModPrime(17, Number);
+                    BigInteger sz = 4520166756633;
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * rz * BigInteger.ModPow(sz, 3, Number), Number), BigInteger.Remainder(2 * rz * BigInteger.ModPow(sz, 5, Number), Number) });
+                    t1.Wait();
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * rz * BigInteger.ModPow(sz, 3, Number) * BigInteger.ModPow(t1.Result, 2, Number), Number), BigInteger.Remainder(2 * rz * BigInteger.ModPow(sz, 5, Number) * BigInteger.ModPow(t1.Result, 3, Number), Number) });
+                    break;
+                case (-232):
+                    BigInteger rx = 1728371226151263375 - 11276414500 * Extension.SquareRootModPrime(29, Number);
+                    BigInteger sx = 1728371165425912854;
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * rx * BigInteger.ModPow(sx, 3, Number), Number), BigInteger.Remainder(2 * rx * BigInteger.ModPow(sx, 5, Number), Number) });
+                    t1.Wait();
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * rx * BigInteger.ModPow(sx, 3, Number) * BigInteger.ModPow(t1.Result, 2, Number), Number), BigInteger.Remainder(2 * rx * BigInteger.ModPow(sx, 5, Number) * BigInteger.ModPow(t1.Result, 3, Number), Number) });
+                    break;
+                case (-267):
+                    BigInteger rc = BigInteger.Parse("3632253349307716000000") - 12320504793376000 * Extension.SquareRootModPrime(89, Number);
+                    BigInteger sc = BigInteger.Parse("3632369580717474122449");
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * rc * BigInteger.ModPow(sc, 3, Number), Number), BigInteger.Remainder(2 * rc * BigInteger.ModPow(sc, 5, Number), Number) });
+                    t1.Wait();
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * rc * BigInteger.ModPow(sc, 3, Number) * BigInteger.ModPow(t1.Result, 2, Number), Number), BigInteger.Remainder(2 * rc * BigInteger.ModPow(sc, 5, Number) * BigInteger.ModPow(t1.Result, 3, Number), Number) });
+                    break;
+                case (-403):
+                    BigInteger rcq = BigInteger.Parse("16416107434811840000") - 4799513373120384000 * Extension.SquareRootModPrime(13, Number);
+                    BigInteger scq = BigInteger.Parse("33720998998872514077");
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * rcq * BigInteger.ModPow(scq, 3, Number), Number), BigInteger.Remainder(2 * rcq * BigInteger.ModPow(scq, 5, Number), Number) });
+                    t1.Wait();
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * rcq * BigInteger.ModPow(scq, 3, Number) * BigInteger.ModPow(t1.Result, 2, Number), Number), BigInteger.Remainder(2 * rcq * BigInteger.ModPow(scq, 5, Number) * BigInteger.ModPow(t1.Result, 3, Number), Number) });
+                    break;
+                case (-427):
+                    BigInteger rcqa = BigInteger.Parse("564510997315289728000") - 5784785611102784000 * Extension.SquareRootModPrime(61, Number);
+                    BigInteger scqa = BigInteger.Parse("609691617259594724421");
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * rcqa * BigInteger.ModPow(scqa, 3, Number), Number), BigInteger.Remainder(2 * rcqa * BigInteger.ModPow(scqa, 5, Number), Number) });
+                    t1.Wait();
+                    paramCurve.Add(new BigInteger[] { BigInteger.Remainder(-3 * rcqa * BigInteger.ModPow(scqa, 3, Number) * BigInteger.ModPow(t1.Result, 2, Number), Number), BigInteger.Remainder(2 * rcqa * BigInteger.ModPow(scqa, 5, Number) * BigInteger.ModPow(t1.Result, 3, Number), Number) });
+                    break;
+            }
+            return paramCurve;
         }
         /// <summary>
         /// Случайный квадратичный невычет по модулю тестируемого числа
@@ -346,7 +551,11 @@ namespace Atkin_MoreinPrimeTest
                 for (int i = 0; i < paramCurve.Count; i++)
                 {
                     EllipticCurvePoint point = new EllipticCurvePoint(Number, paramCurve[i][0], paramCurve[i][1]);
+                    if (!point.CheckPoint())
+                        return null;
                     EllipticCurvePoint orderPoint = EllipticCurvePoint.Multiply(orderCurve, point);
+                    if (!orderPoint.CheckPoint())
+                        return null;
                     if (orderPoint.X == 0 && orderPoint.Z == 0)
                     {
                         count++;
@@ -358,7 +567,8 @@ namespace Atkin_MoreinPrimeTest
                 count = 0;
                 iteration++;
             }
-            if (curveNum.Count == 0) return null; // Порядки не подошли
+            if (curveNum.Count == 0)
+                return new BigInteger[] { 0 }; // Порядки не подошли
             return paramCurve[curveNum[1]];
         }
         /// <summary>

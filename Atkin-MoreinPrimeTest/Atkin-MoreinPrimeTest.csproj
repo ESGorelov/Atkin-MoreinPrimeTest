@@ -53,9 +53,8 @@
     <Prefer32Bit>true</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="EllipticCurve, Version=1.0.0.0, Culture=neutral, processorArchitecture=AMD64">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>bin\x64\Debug\EllipticCurve.dll</HintPath>
+    <Reference Include="Atkin&amp;MoreinTest">
+      <HintPath>..\..\AtkinMoreinTest_dll\ClassLibrary1\ClassLibrary1\bin\x64\Release\Atkin&amp;MoreinTest.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -68,14 +67,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Extension.cs" />
-    <Compile Include="ComplexPolynom.cs" />
-    <Compile Include="FactorOrders.cs" />
-    <Compile Include="Polynom.cs" />
-    <Compile Include="PrimeTesting.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Tests.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
